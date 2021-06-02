@@ -19,7 +19,7 @@ public interface IRetainMessageStoreService {
 	/**
 	 * 获取retain消息
 	 */
-	RetainMessageStore get(String topic);
+	List<RetainMessageStore> get(String topic);
 
 	/**
 	 * 删除retain标志消息

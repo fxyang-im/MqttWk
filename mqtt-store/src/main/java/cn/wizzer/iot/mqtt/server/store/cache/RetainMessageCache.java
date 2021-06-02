@@ -1,6 +1,8 @@
 package cn.wizzer.iot.mqtt.server.store.cache;
 
 import cn.wizzer.iot.mqtt.server.common.message.RetainMessageStore;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import org.nutz.aop.interceptor.async.Async;
 import org.nutz.integration.jedis.JedisAgent;
@@ -29,13 +31,23 @@ public class RetainMessageCache {
     @Inject
     private JedisAgent jedisAgent;
 
+    private Integer cacheNum = 200;
+
     public RetainMessageStore put(String topic, RetainMessageStore obj) {
-        redisService.set(CACHE_PRE + topic, JSONObject.toJSONString(obj));
+//        redisService.set(CACHE_PRE + topic, JSONObject.toJSONString(obj));
+        String cacheKey = CACHE_PRE + topic;
+        Long llen = redisService.llen(cacheKey);
+        if (llen > cacheNum) {
+            redisService.ltrim(cacheKey, 0, cacheNum / 2);
+        }
+        redisService.lpush(cacheKey, JSONObject.toJSONString(obj));
         return obj;
     }
 
-    public RetainMessageStore get(String topic) {
-        return JSONObject.parseObject(redisService.get(CACHE_PRE + topic), RetainMessageStore.class);
+    public List<RetainMessageStore> get(String topic) {
+        List<String> lrange = redisService.lrange(CACHE_PRE + topic, 0, -1);
+        return JSONArray.parseArray(JSON.toJSONString(lrange),RetainMessageStore.class);
+//        return JSONObject.parseObject(redisService.get(CACHE_PRE + topic), RetainMessageStore.class);
     }
 
     public boolean containsKey(String topic) {
@@ -47,8 +59,8 @@ public class RetainMessageCache {
         redisService.del(CACHE_PRE + topic);
     }
 
-    public Map<String, RetainMessageStore> all() {
-        Map<String, RetainMessageStore> map = new HashMap<>();
+    public Map<String, List<RetainMessageStore>> all() {
+        Map<String, List<RetainMessageStore>> map = new HashMap<>();
         ScanParams match = new ScanParams().match(CACHE_PRE + "*");
         List<String> keys = new ArrayList<>();
         if (jedisAgent.isClusterMode()) {
@@ -76,7 +88,9 @@ public class RetainMessageCache {
             }
         }
         for (String key : keys) {
-            map.put(key.substring(CACHE_PRE.length()), JSONObject.parseObject(redisService.get(key), RetainMessageStore.class));
+            List<String> lrange = redisService.lrange(key, 0, -1);
+            List<RetainMessageStore> retainMessageStores = JSONArray.parseArray(JSON.toJSONString(lrange), RetainMessageStore.class);
+            map.put(key.substring(CACHE_PRE.length()), retainMessageStores);
         }
         return map;
     }

@@ -26,7 +26,7 @@ public class RetainMessageStoreService implements IRetainMessageStoreService {
     }
 
     @Override
-    public RetainMessageStore get(String topic) {
+    public List<RetainMessageStore> get(String topic) {
         return retainMessageCache.get(topic);
     }
 
@@ -45,7 +45,7 @@ public class RetainMessageStoreService implements IRetainMessageStoreService {
         List<RetainMessageStore> retainMessageStores = new ArrayList<RetainMessageStore>();
         if (!StrUtil.contains(topicFilter, '#') && !StrUtil.contains(topicFilter, '+')) {
             if (retainMessageCache.containsKey(topicFilter)) {
-                retainMessageStores.add(retainMessageCache.get(topicFilter));
+                retainMessageStores.addAll(retainMessageCache.get(topicFilter));
             }
         } else {
             retainMessageCache.all().forEach((topic, val) -> {
@@ -66,7 +66,7 @@ public class RetainMessageStoreService implements IRetainMessageStoreService {
                     }
                     newTopicFilter = StrUtil.removeSuffix(newTopicFilter, "/");
                     if (topicFilter.equals(newTopicFilter)) {
-                        retainMessageStores.add(val);
+                        retainMessageStores.addAll(val);
                     }
                 }
             });
