@@ -40,13 +40,15 @@ public class RetainMessageCache {
         if (llen > cacheNum) {
             redisService.ltrim(cacheKey, 0, cacheNum / 2);
         }
-        redisService.lpush(cacheKey, JSONObject.toJSONString(obj));
+        redisService.rpush(cacheKey, JSONObject.toJSONString(obj));
         return obj;
     }
 
     public List<RetainMessageStore> get(String topic) {
         List<String> lrange = redisService.lrange(CACHE_PRE + topic, 0, -1);
-        return JSONArray.parseArray(JSON.toJSONString(lrange),RetainMessageStore.class);
+        List<RetainMessageStore> retainMessageStores = new ArrayList<>();
+        lrange.forEach(e->retainMessageStores.add(JSON.parseObject(e, RetainMessageStore.class)));
+        return retainMessageStores;
 //        return JSONObject.parseObject(redisService.get(CACHE_PRE + topic), RetainMessageStore.class);
     }
 
@@ -89,9 +91,17 @@ public class RetainMessageCache {
         }
         for (String key : keys) {
             List<String> lrange = redisService.lrange(key, 0, -1);
-            List<RetainMessageStore> retainMessageStores = JSONArray.parseArray(JSON.toJSONString(lrange), RetainMessageStore.class);
+            List<RetainMessageStore> retainMessageStores = new ArrayList<>();
+            lrange.forEach(e->retainMessageStores.add(JSON.parseObject(e, RetainMessageStore.class)));
             map.put(key.substring(CACHE_PRE.length()), retainMessageStores);
         }
         return map;
+    }
+
+    public static void main(String[] args) {
+        String s = "[\"{\\\"messageBytes\\\":\\\"ewogICJtc2ciOiAiMSIKfQ==\\\",\\\"mqttQoS\\\":1,\\\"topic\\\":\\\"testtopic\\\"}\",\"{\\\"messageBytes\\\":\\\"ewogICJtc2ciOiAiMSIKfQ==\\\",\\\"mqttQoS\\\":1,\\\"topic\\\":\\\"testtopic\\\"}\",\"{\\\"messageBytes\\\":\\\"ewogICJtc2ciOiAiNSIKfQ==\\\",\\\"mqttQoS\\\":1,\\\"topic\\\":\\\"testtopic\\\"}\",\"{\\\"messageBytes\\\":\\\"ewogICJtc2ciOiAiNCIKfQ==\\\",\\\"mqttQoS\\\":1,\\\"topic\\\":\\\"testtopic\\\"}\",\"{\\\"messageBytes\\\":\\\"ewogICJtc2ciOiAiMyIKfQ==\\\",\\\"mqttQoS\\\":1,\\\"topic\\\":\\\"testtopic\\\"}\",\"{\\\"messageBytes\\\":\\\"ewogICJtc2ciOiAiMiIKfQ==\\\",\\\"mqttQoS\\\":1,\\\"topic\\\":\\\"testtopic\\\"}\",\"{\\\"messageBytes\\\":\\\"ewogICJtc2ciOiAiMSIKfQ==\\\",\\\"mqttQoS\\\":1,\\\"topic\\\":\\\"testtopic\\\"}\",\"{\\\"messageBytes\\\":\\\"ewogICJtc2ciOiAiMSIKfQ==\\\",\\\"mqttQoS\\\":1,\\\"topic\\\":\\\"testtopic\\\"}\",\"{\\\"messageBytes\\\":\\\"ewogICJtc2ciOiAiMSIKfQ==\\\",\\\"mqttQoS\\\":1,\\\"topic\\\":\\\"testtopic\\\"}\"]";
+        List<RetainMessageStore> retainMessageStores = JSONArray.parseArray(s, RetainMessageStore.class);
+        System.out.println(retainMessageStores);
+
     }
 }
