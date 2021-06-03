@@ -130,7 +130,7 @@ public class ProtocolProcess {
 
     public PubAck pubAck() {
         if (pubAck == null) {
-            pubAck = new PubAck(dupPublishMessageStoreService);
+            pubAck = new PubAck(dupPublishMessageStoreService,brokerProperties,sessionStoreService,channelIdMap);
         }
         return pubAck;
     }
