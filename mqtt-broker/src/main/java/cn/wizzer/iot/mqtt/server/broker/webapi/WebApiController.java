@@ -4,6 +4,16 @@ import cn.wizzer.iot.mqtt.server.broker.cluster.RedisCluster;
 import cn.wizzer.iot.mqtt.server.broker.config.BrokerProperties;
 import cn.wizzer.iot.mqtt.server.broker.internal.InternalMessage;
 import cn.wizzer.iot.mqtt.server.broker.internal.InternalSendServer;
+import cn.wizzer.iot.mqtt.server.broker.protocol.ProtocolProcess;
+import cn.wizzer.iot.mqtt.server.broker.webapi.param.BatchSubscribeParam;
+import cn.wizzer.iot.mqtt.server.broker.webapi.param.MqttTopicSubscriptionParam;
+import cn.wizzer.iot.mqtt.server.common.session.SessionStore;
+import cn.wizzer.iot.mqtt.server.common.subscribe.SubscribeStore;
+import cn.wizzer.iot.mqtt.server.store.session.SessionStoreService;
+import com.alibaba.fastjson.JSONObject;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelId;
+import io.netty.channel.group.ChannelGroup;
 import io.netty.handler.codec.mqtt.MqttQoS;
 import org.nutz.http.Request;
 import org.nutz.http.Response;
@@ -20,16 +30,18 @@ import org.nutz.lang.util.NutMap;
 import org.nutz.log.Log;
 import org.nutz.log.Logs;
 import org.nutz.mvc.adaptor.JsonAdaptor;
-import org.nutz.mvc.annotation.AdaptBy;
-import org.nutz.mvc.annotation.At;
-import org.nutz.mvc.annotation.Ok;
+import org.nutz.mvc.annotation.*;
 import redis.clients.jedis.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Created by wizzer on 2019/5/24
+ * <p>
+ * V1版本只考虑单机版本
  */
 @IocBean
 @At("/open/api/mqttwk")
@@ -37,6 +49,7 @@ public class WebApiController {
     private static final Log log = Logs.get();
     private static final String CACHE_SESSION_PRE = "mqttwk:session:";
     private static final String CACHE_CLIENT_PRE = "mqttwk:client:";
+    private final static String SUBNOTWILDCARD_CACHE_PRE = "mqttwk:subnotwildcard:";
     @Inject
     private RedisService redisService;
     @Inject
@@ -47,17 +60,25 @@ public class WebApiController {
     private RedisCluster redisCluster;
     @Inject
     private JedisAgent jedisAgent;
+    @Inject
+    private ProtocolProcess protocolProcess;
+    @Inject
+    private ChannelGroup channelGroup;
+    @Inject
+    private Map<String, ChannelId> channelIdMap;
+    @Inject
+    private SessionStoreService sessionStoreService;
 
     /**
      * 向设备发送数据,发送格式见 test_send 方法实例代码
+     *
      * @param data
      * @return
      */
     @At("/send")
     @Ok("json")
     @AdaptBy(type = JsonAdaptor.class)
-    public Object send(NutMap data) {
-        NutMap nutMap = NutMap.NEW();
+    public ResponseResult send(NutMap data) {
         try {
             String processId = Lang.JdkTool.getProcessId("0");
             InternalMessage message = new InternalMessage();
@@ -76,14 +97,76 @@ public class WebApiController {
             } else {
                 internalSendServer.sendPublishMessage(message.getClientId(), message.getTopic(), MqttQoS.valueOf(message.getMqttQoS()), message.getMessageBytes(), message.isRetain(), message.isDup());
             }
-            nutMap.put("code", 0);
-            nutMap.put("msg", "success");
+            return ResponseResult.genSuccessResult();
         } catch (Exception e) {
             log.error(e);
-            nutMap.put("code", -1);
-            nutMap.put("msg", e.getMessage());
+            return ResponseResult.genErrorResult(e.getMessage());
         }
-        return nutMap;
+    }
+
+    /**
+     * 踢下线client
+     *
+     * @param clientId
+     * @return
+     */
+    @POST
+    @At(value = "/clients/kick")
+    @Ok("json")
+    public ResponseResult kickClient(String clientId) {
+        SessionStore sessionStore = sessionStoreService.get(clientId);
+        ChannelId channelId = channelIdMap.get(sessionStore.getBrokerId() + "_" + sessionStore.getChannelId());
+        if (channelId != null) {
+            Channel channel = channelGroup.find(channelId);
+            protocolProcess.disConnect().processDisConnect(channel, null);
+            return ResponseResult.genSuccessResult();
+        } else {
+            return ResponseResult.genErrorResult("未找到");
+        }
+    }
+
+    /**
+     * 批量订阅
+     *
+     * @param batchSubscribeParam
+     * @return
+     */
+    @POST
+    @At(value = "/clients/batch-subscribe")
+    @Ok("json")
+    @AdaptBy(type = JsonAdaptor.class)
+    public ResponseResult batchSubscribe(BatchSubscribeParam batchSubscribeParam) {
+        String clientId = batchSubscribeParam.getClientId();
+        List<MqttTopicSubscriptionParam> topicSubscriptions = batchSubscribeParam.getTopicSubscriptions();
+        List<SubscribeStore> subscribeStoreList = topicSubscriptions.stream().map(e -> new SubscribeStore(clientId, e.getTopicName(), e.getQos())).collect(Collectors.toList());
+        subscribeStoreList.forEach(subscribeStore -> {
+                    String topicFilter = subscribeStore.getTopicFilter();
+                    redisService.hset(SUBNOTWILDCARD_CACHE_PRE + topicFilter, clientId, JSONObject.toJSONString(subscribeStore));
+                    redisService.sadd(CACHE_CLIENT_PRE + clientId, topicFilter);
+                }
+        );
+        return ResponseResult.genSuccessResult();
+    }
+
+    /**
+     * 批量取消订阅
+     *
+     * @param batchSubscribeParam
+     * @return
+     */
+    @POST
+    @At(value = "/clients/batch-unsubscribe")
+    @Ok("json")
+    @AdaptBy(type = JsonAdaptor.class)
+    public ResponseResult batchUnSubscribe(BatchSubscribeParam batchSubscribeParam) {
+        String clientId = batchSubscribeParam.getClientId();
+        List<MqttTopicSubscriptionParam> topicSubscriptions = batchSubscribeParam.getTopicSubscriptions();
+        topicSubscriptions.forEach(e -> {
+            String topic = e.getTopicName();
+            redisService.srem(CACHE_CLIENT_PRE + clientId, topic);
+            redisService.hdel(SUBNOTWILDCARD_CACHE_PRE + topic, clientId);
+        });
+        return ResponseResult.genSuccessResult();
     }
 
     @At("/test_send")
@@ -136,7 +219,7 @@ public class WebApiController {
             } else {
                 Jedis jedis = null;
                 try {
-                    jedis =jedisAgent.jedis();
+                    jedis = jedisAgent.jedis();
                     ScanResult<String> scan = null;
                     do {
                         scan = jedis.scan(scan == null ? ScanParams.SCAN_POINTER_START : scan.getStringCursor(), match);
