@@ -21,6 +21,11 @@
             <artifactId>nutzboot-core</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.nutz</groupId>
+            <artifactId>nutzboot-starter-redis</artifactId>
+            <version>${nutzboot.version}</version>
+        </dependency>
+        <dependency>
             <groupId>cn.hutool</groupId>
             <artifactId>hutool-crypto</artifactId>
             <version>${hutool.version}</version>
