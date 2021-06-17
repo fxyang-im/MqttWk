@@ -59,6 +59,7 @@ public class SubscribeWildcardCache {
     public Map<String, ConcurrentHashMap<String, SubscribeStore>> all() {
         Map<String, ConcurrentHashMap<String, SubscribeStore>> map = new HashMap<>();
         ScanParams match = new ScanParams().match(CACHE_PRE + "*");
+        match.count(1000);
         List<String> keys = new ArrayList<>();
         if (jedisAgent.isClusterMode()) {
             JedisCluster jedisCluster = jedisAgent.getJedisClusterWrapper().getJedisCluster();

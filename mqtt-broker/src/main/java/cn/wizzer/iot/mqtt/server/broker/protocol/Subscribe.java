@@ -72,15 +72,16 @@ public class Subscribe {
 							MqttMessageIdVariableHeader.from(msg.variableHeader().messageId()),
 							new MqttSubAckPayload(0x80));
 					channel.writeAndFlush(subAckMessage);
+					return;
 				}
 
-			} else {
-				MqttSubAckMessage subAckMessage = (MqttSubAckMessage) MqttMessageFactory.newMessage(
-						new MqttFixedHeader(MqttMessageType.SUBACK, false, MqttQoS.AT_MOST_ONCE, false, 0),
-						MqttMessageIdVariableHeader.from(msg.variableHeader().messageId()),
-						new MqttSubAckPayload(mqttQoSList));
-			channel.writeAndFlush(subAckMessage);
-		}
+			}
+			MqttSubAckMessage subAckMessage = (MqttSubAckMessage) MqttMessageFactory.newMessage(
+					new MqttFixedHeader(MqttMessageType.SUBACK, false, MqttQoS.AT_MOST_ONCE, false, 0),
+					MqttMessageIdVariableHeader.from(msg.variableHeader().messageId()),
+					new MqttSubAckPayload(mqttQoSList));
+		channel.writeAndFlush(subAckMessage);
+
 			// 发布保留消息
 			topicSubscriptions.forEach(topicSubscription -> {
 				String topicFilter = topicSubscription.topicName();
