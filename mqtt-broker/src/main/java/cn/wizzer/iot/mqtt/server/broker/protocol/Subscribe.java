@@ -5,6 +5,8 @@
 package cn.wizzer.iot.mqtt.server.broker.protocol;
 
 import cn.hutool.core.util.StrUtil;
+import cn.wizzer.iot.mqtt.server.broker.config.BrokerProperties;
+import cn.wizzer.iot.mqtt.server.common.auth.IAuthService;
 import cn.wizzer.iot.mqtt.server.common.message.IMessageIdService;
 import cn.wizzer.iot.mqtt.server.common.message.IRetainMessageStoreService;
 import cn.wizzer.iot.mqtt.server.common.message.RetainMessageStore;
@@ -33,14 +35,22 @@ public class Subscribe {
 
 	private IRetainMessageStoreService retainMessageStoreService;
 
-	public Subscribe(ISubscribeStoreService subscribeStoreService, IMessageIdService messageIdService, IRetainMessageStoreService retainMessageStoreService) {
+	private BrokerProperties brokerProperties;
+
+	private IAuthService authService;
+
+
+	public Subscribe(IAuthService authService,BrokerProperties brokerProperties,ISubscribeStoreService subscribeStoreService, IMessageIdService messageIdService, IRetainMessageStoreService retainMessageStoreService) {
 		this.subscribeStoreService = subscribeStoreService;
 		this.messageIdService = messageIdService;
 		this.retainMessageStoreService = retainMessageStoreService;
+		this.authService = authService;
+		this.brokerProperties = brokerProperties;
 	}
 
 	public void processSubscribe(Channel channel, MqttSubscribeMessage msg) {
 		List<MqttTopicSubscription> topicSubscriptions = msg.payload().topicSubscriptions();
+		List<String> topicList = new ArrayList<>();
 		if (this.validTopicFilter(topicSubscriptions)) {
 			String clientId = (String) channel.attr(AttributeKey.valueOf("clientId")).get();
 			List<Integer> mqttQoSList = new ArrayList<Integer>();
@@ -50,13 +60,27 @@ public class Subscribe {
 				SubscribeStore subscribeStore = new SubscribeStore(clientId, topicFilter, mqttQoS.value());
 				subscribeStoreService.put(topicFilter, subscribeStore);
 				mqttQoSList.add(mqttQoS.value());
+				topicList.add(topicFilter);
 				LOGGER.debug("SUBSCRIBE - clientId: {}, topFilter: {}, QoS: {}", clientId, topicFilter, mqttQoS.value());
 			});
-			MqttSubAckMessage subAckMessage = (MqttSubAckMessage) MqttMessageFactory.newMessage(
-				new MqttFixedHeader(MqttMessageType.SUBACK, false, MqttQoS.AT_MOST_ONCE, false, 0),
-				MqttMessageIdVariableHeader.from(msg.variableHeader().messageId()),
-				new MqttSubAckPayload(mqttQoSList));
+			if (brokerProperties.isMqttAuthorizationMust()) {
+				// 订阅鉴权
+				List<String> noAuthTopicList = authService.topicBatchSubscribeAuthorization(clientId, topicList);
+				if (noAuthTopicList == null || noAuthTopicList.size() > 0) {
+					MqttSubAckMessage subAckMessage = (MqttSubAckMessage) MqttMessageFactory.newMessage(
+							new MqttFixedHeader(MqttMessageType.SUBACK, false, MqttQoS.AT_MOST_ONCE, false, 0),
+							MqttMessageIdVariableHeader.from(msg.variableHeader().messageId()),
+							new MqttSubAckPayload(0x80));
+					channel.writeAndFlush(subAckMessage);
+				}
+
+			} else {
+				MqttSubAckMessage subAckMessage = (MqttSubAckMessage) MqttMessageFactory.newMessage(
+						new MqttFixedHeader(MqttMessageType.SUBACK, false, MqttQoS.AT_MOST_ONCE, false, 0),
+						MqttMessageIdVariableHeader.from(msg.variableHeader().messageId()),
+						new MqttSubAckPayload(mqttQoSList));
 			channel.writeAndFlush(subAckMessage);
+		}
 			// 发布保留消息
 			topicSubscriptions.forEach(topicSubscription -> {
 				String topicFilter = topicSubscription.topicName();
