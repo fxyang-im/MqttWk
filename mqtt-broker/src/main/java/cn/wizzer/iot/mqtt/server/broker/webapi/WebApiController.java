@@ -120,7 +120,6 @@ public class WebApiController {
             Channel channel = channelGroup.find(channelId);
             protocolProcess.disConnect().processDisConnect(channel, null);
             //发送给内部 broker消息
-            return ResponseResult.genSuccessResult();
         } else {
             InternalMessage message = new InternalMessage();
             String processId = Lang.JdkTool.getProcessId("0");
@@ -134,8 +133,8 @@ public class WebApiController {
             message.setMessageBytes("".getBytes());
             message.setKick(true);
             redisCluster.sendMessage(message);
-            return ResponseResult.genErrorResult("未找到");
         }
+        return ResponseResult.genSuccessResult();
     }
 
     /**
