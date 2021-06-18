@@ -122,6 +122,18 @@ public class WebApiController {
             //发送给内部 broker消息
             return ResponseResult.genSuccessResult();
         } else {
+            InternalMessage message = new InternalMessage();
+            String processId = Lang.JdkTool.getProcessId("0");
+            message.setBrokerId(brokerProperties.getId());
+            message.setProcessId(processId);
+            message.setClientId(R.UU32());
+            message.setTopic("");
+            message.setRetain(false);
+            message.setDup(false);
+            message.setMqttQoS(1);
+            message.setMessageBytes("".getBytes());
+            message.setKick(true);
+            redisCluster.sendMessage(message);
             return ResponseResult.genErrorResult("未找到");
         }
     }

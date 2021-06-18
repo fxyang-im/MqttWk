@@ -30,6 +30,16 @@ public class InternalMessage implements Serializable {
 
     private boolean dup;
 
+    private boolean kick;
+
+    public boolean isKick() {
+        return kick;
+    }
+
+    public void setKick(boolean kick) {
+        this.kick = kick;
+    }
+
     public String getBrokerId() {
         return brokerId;
     }
