@@ -12,16 +12,7 @@ import java.util.List;
  * @since 1.0.0
  */
 public class BatchSubscribeParam {
-    private String clientId;
     private List<MqttTopicSubscriptionParam> topicSubscriptions;
-
-    public String getClientId() {
-        return clientId;
-    }
-
-    public void setClientId(String clientId) {
-        this.clientId = clientId;
-    }
 
     public List<MqttTopicSubscriptionParam> getTopicSubscriptions() {
         return topicSubscriptions;

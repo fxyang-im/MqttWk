@@ -119,6 +119,7 @@ public class WebApiController {
         if (channelId != null) {
             Channel channel = channelGroup.find(channelId);
             protocolProcess.disConnect().processDisConnect(channel, null);
+            //发送给内部 broker消息
             return ResponseResult.genSuccessResult();
         } else {
             return ResponseResult.genErrorResult("未找到");
@@ -136,11 +137,11 @@ public class WebApiController {
     @Ok("json")
     @AdaptBy(type = JsonAdaptor.class)
     public ResponseResult batchSubscribe(BatchSubscribeParam batchSubscribeParam) {
-        String clientId = batchSubscribeParam.getClientId();
         List<MqttTopicSubscriptionParam> topicSubscriptions = batchSubscribeParam.getTopicSubscriptions();
-        List<SubscribeStore> subscribeStoreList = topicSubscriptions.stream().map(e -> new SubscribeStore(clientId, e.getTopicName(), e.getQos())).collect(Collectors.toList());
+        List<SubscribeStore> subscribeStoreList = topicSubscriptions.stream().map(e -> new SubscribeStore(e.getClientId(), e.getTopicName(), e.getQos())).collect(Collectors.toList());
         subscribeStoreList.forEach(subscribeStore -> {
                     String topicFilter = subscribeStore.getTopicFilter();
+                    String clientId = subscribeStore.getClientId();
                     redisService.hset(SUBNOTWILDCARD_CACHE_PRE + topicFilter, clientId, JSONObject.toJSONString(subscribeStore));
                     redisService.sadd(CACHE_CLIENT_PRE + clientId, topicFilter);
                 }
@@ -159,10 +160,10 @@ public class WebApiController {
     @Ok("json")
     @AdaptBy(type = JsonAdaptor.class)
     public ResponseResult batchUnSubscribe(BatchSubscribeParam batchSubscribeParam) {
-        String clientId = batchSubscribeParam.getClientId();
         List<MqttTopicSubscriptionParam> topicSubscriptions = batchSubscribeParam.getTopicSubscriptions();
         topicSubscriptions.forEach(e -> {
             String topic = e.getTopicName();
+            String clientId = e.getClientId();
             redisService.srem(CACHE_CLIENT_PRE + clientId, topic);
             redisService.hdel(SUBNOTWILDCARD_CACHE_PRE + topic, clientId);
         });

@@ -10,6 +10,7 @@ package cn.wizzer.iot.mqtt.server.broker.webapi.param;
 public class MqttTopicSubscriptionParam {
     private String topicName;
     private int qos;
+    private String clientId;
 
     public String getTopicName() {
         return topicName;
@@ -25,5 +26,13 @@ public class MqttTopicSubscriptionParam {
 
     public void setQos(int qos) {
         this.qos = qos;
+    }
+
+    public String getClientId() {
+        return clientId;
+    }
+
+    public void setClientId(String clientId) {
+        this.clientId = clientId;
     }
 }
