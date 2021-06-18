@@ -7,6 +7,7 @@ import cn.wizzer.iot.mqtt.server.broker.internal.InternalSendServer;
 import cn.wizzer.iot.mqtt.server.broker.protocol.ProtocolProcess;
 import cn.wizzer.iot.mqtt.server.broker.webapi.param.BatchSubscribeParam;
 import cn.wizzer.iot.mqtt.server.broker.webapi.param.MqttTopicSubscriptionParam;
+import cn.wizzer.iot.mqtt.server.broker.webapi.param.SendMsgParam;
 import cn.wizzer.iot.mqtt.server.common.session.SessionStore;
 import cn.wizzer.iot.mqtt.server.common.subscribe.SubscribeStore;
 import cn.wizzer.iot.mqtt.server.store.session.SessionStoreService;
@@ -18,6 +19,7 @@ import io.netty.handler.codec.mqtt.MqttQoS;
 import org.nutz.http.Request;
 import org.nutz.http.Response;
 import org.nutz.http.Sender;
+import org.nutz.http.SenderFactory;
 import org.nutz.integration.jedis.JedisAgent;
 import org.nutz.integration.jedis.RedisService;
 import org.nutz.ioc.loader.annotation.Inject;
@@ -78,24 +80,23 @@ public class WebApiController {
     @At("/send")
     @Ok("json")
     @AdaptBy(type = JsonAdaptor.class)
-    public ResponseResult send(NutMap data) {
+    public ResponseResult send(SendMsgParam data) {
         try {
             String processId = Lang.JdkTool.getProcessId("0");
             InternalMessage message = new InternalMessage();
             message.setBrokerId(brokerProperties.getId());
             message.setProcessId(processId);
             message.setClientId(R.UU32());
-            message.setTopic(data.getString("topic", ""));
-            message.setRetain(data.getBoolean("retain"));
-            message.setDup(data.getBoolean("dup"));
-            message.setMqttQoS(data.getInt("qos"));
-            message.setMessageBytes(data.getString("message", "").getBytes());
+            message.setTopic(data.getTopic());
+            message.setRetain(data.isRetain());
+            message.setDup(data.isDup());
+            message.setMqttQoS(data.getQos());
+            message.setMessageBytes(data.getPayload().getBytes());
             log.debug("send:::" + Json.toJson(message));
+            internalSendServer.sendPublishMessage(message.getClientId(), message.getTopic(), MqttQoS.valueOf(message.getMqttQoS()), message.getMessageBytes(), message.isRetain(), message.isDup());
             //如果开启集群功能
             if (brokerProperties.getClusterEnabled()) {
                 redisCluster.sendMessage(message);
-            } else {
-                internalSendServer.sendPublishMessage(message.getClientId(), message.getTopic(), MqttQoS.valueOf(message.getMqttQoS()), message.getMessageBytes(), message.isRetain(), message.isDup());
             }
             return ResponseResult.genSuccessResult();
         } catch (Exception e) {
@@ -192,7 +193,7 @@ public class WebApiController {
             message.addv("retain", true);
             message.addv("dup", true);
             message.addv("qos", 1);
-            message.addv("message", "wizzer");
+            message.addv("payload", "wizzer");
             req.setData(Json.toJson(message));
             Response resp = Sender.create(req).send();
             if (resp.isOK()) {

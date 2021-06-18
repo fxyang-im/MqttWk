@@ -5,7 +5,6 @@ import java.io.Serializable;
 
 public class ResponseResult<T> implements Serializable {
     private int code;
-    private String msg;
     private T data;
 
     private static String SUCCESS = "SUCCESS";
@@ -15,29 +14,27 @@ public class ResponseResult<T> implements Serializable {
         super();
     }
 
-    public ResponseResult(int code, String msg){
+
+    public ResponseResult(int code) {
         this.code = code;
-        this.msg = msg;
     }
 
-
-    public ResponseResult(int code,String msg, T data){
+    public ResponseResult(int code, T data){
         this.code = code;
-        this.msg = msg;
         this.data = data;
     }
 
 
     public static<T> ResponseResult<T> genSuccessResult(T data){
-        return new ResponseResult(1,SUCCESS,data);
+        return new ResponseResult(1,data);
     }
 
     public static<T> ResponseResult<T> genSuccessResult(){
-        return new ResponseResult(1,SUCCESS);
+        return new ResponseResult(1);
     }
 
     public static<T> ResponseResult<T> genErrorResult(){
-        return new ResponseResult(-1,ERROR);
+        return new ResponseResult(-1);
     }
 
     public static<T> ResponseResult<T> genErrorResult(String msg){
