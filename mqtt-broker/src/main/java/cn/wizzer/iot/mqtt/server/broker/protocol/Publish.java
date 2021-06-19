@@ -7,6 +7,7 @@ package cn.wizzer.iot.mqtt.server.broker.protocol;
 import cn.wizzer.iot.mqtt.server.broker.config.BrokerProperties;
 import cn.wizzer.iot.mqtt.server.broker.internal.InternalCommunication;
 import cn.wizzer.iot.mqtt.server.broker.internal.InternalMessage;
+import cn.wizzer.iot.mqtt.server.common.auth.IAuthService;
 import cn.wizzer.iot.mqtt.server.common.message.*;
 import cn.wizzer.iot.mqtt.server.common.session.ISessionStoreService;
 import cn.wizzer.iot.mqtt.server.common.session.SessionStore;
@@ -49,7 +50,9 @@ public class Publish {
 
     private BrokerProperties brokerProperties;
 
-    public Publish(ISessionStoreService sessionStoreService, ISubscribeStoreService subscribeStoreService, IMessageIdService messageIdService, IRetainMessageStoreService retainMessageStoreService, IDupPublishMessageStoreService dupPublishMessageStoreService, InternalCommunication internalCommunication, ChannelGroup channelGroup, Map<String, ChannelId> channelIdMap, BrokerProperties brokerProperties) {
+    private IAuthService authService;
+
+    public Publish(IAuthService authService,ISessionStoreService sessionStoreService, ISubscribeStoreService subscribeStoreService, IMessageIdService messageIdService, IRetainMessageStoreService retainMessageStoreService, IDupPublishMessageStoreService dupPublishMessageStoreService, InternalCommunication internalCommunication, ChannelGroup channelGroup, Map<String, ChannelId> channelIdMap, BrokerProperties brokerProperties) {
         this.sessionStoreService = sessionStoreService;
         this.subscribeStoreService = subscribeStoreService;
         this.messageIdService = messageIdService;
@@ -59,6 +62,7 @@ public class Publish {
         this.channelGroup = channelGroup;
         this.channelIdMap = channelIdMap;
         this.brokerProperties = brokerProperties;
+        this.authService = authService;
     }
 
     public void processPublish(Channel channel, MqttPublishMessage msg) {
@@ -69,6 +73,14 @@ public class Publish {
             ChannelId channelId = channelIdMap.get(sessionStore.getBrokerId() + "_" + sessionStore.getChannelId());
             if (brokerProperties.getId().equals(sessionStore.getBrokerId()) && channelId != null) {
                 sessionStoreService.expire(clientId, sessionStore.getExpire());
+            }
+        }
+        // 鉴权
+        if (brokerProperties.isMqttAuthorizationMust()) {
+            boolean authFlag = authService.topicPublishAuthorization(clientId, msg.variableHeader().topicName());
+            if(!authFlag){
+                // 未授权返回信息
+                return;
             }
         }
         // QoS=0

@@ -88,7 +88,7 @@ public class ProtocolProcess {
 
     public Subscribe subscribe() {
         if (subscribe == null) {
-            subscribe = new Subscribe(subscribeStoreService, messageIdService, messageStoreService);
+            subscribe = new Subscribe(authService,brokerProperties,subscribeStoreService, messageIdService, messageStoreService);
         }
         return subscribe;
     }
@@ -102,7 +102,7 @@ public class ProtocolProcess {
 
     public Publish publish() {
         if (publish == null) {
-            publish = new Publish(sessionStoreService, subscribeStoreService, messageIdService, messageStoreService, dupPublishMessageStoreService, internalCommunication, channelGroup, channelIdMap, brokerProperties);
+            publish = new Publish(authService,sessionStoreService, subscribeStoreService, messageIdService, messageStoreService, dupPublishMessageStoreService, internalCommunication, channelGroup, channelIdMap, brokerProperties);
         }
         return publish;
     }
