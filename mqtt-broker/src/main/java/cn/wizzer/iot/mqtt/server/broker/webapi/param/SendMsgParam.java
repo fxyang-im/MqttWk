@@ -11,9 +11,9 @@ public class SendMsgParam {
     private String topic;
     private String clientid;
     private String payload;
-    private int qos;
-    private boolean retain;
-    private boolean dup;
+    private Integer qos;
+    private Boolean retain;
+    private Boolean dup;
 
     public String getTopic() {
         return topic;
@@ -39,27 +39,27 @@ public class SendMsgParam {
         this.payload = payload;
     }
 
-    public int getQos() {
+    public Integer getQos() {
         return qos;
     }
 
-    public void setQos(int qos) {
+    public void setQos(Integer qos) {
         this.qos = qos;
     }
 
-    public boolean isRetain() {
+    public Boolean getRetain() {
         return retain;
     }
 
-    public void setRetain(boolean retain) {
+    public void setRetain(Boolean retain) {
         this.retain = retain;
     }
 
-    public boolean isDup() {
+    public Boolean getDup() {
         return dup;
     }
 
-    public void setDup(boolean dup) {
+    public void setDup(Boolean dup) {
         this.dup = dup;
     }
 }

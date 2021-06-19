@@ -88,8 +88,8 @@ public class WebApiController {
             message.setProcessId(processId);
             message.setClientId(R.UU32());
             message.setTopic(data.getTopic());
-            message.setRetain(data.isRetain());
-            message.setDup(data.isDup());
+            message.setRetain(data.getRetain());
+            message.setDup(data.getDup());
             message.setMqttQoS(data.getQos());
             message.setMessageBytes(data.getPayload().getBytes());
             log.debug("send:::" + Json.toJson(message));
