@@ -1,7 +1,9 @@
 package cn.wizzer.iot.mqtt.server.broker.webapi;
 
+import cn.hutool.core.util.StrUtil;
 import cn.wizzer.iot.mqtt.server.broker.cluster.RedisCluster;
 import cn.wizzer.iot.mqtt.server.broker.config.BrokerProperties;
+import cn.wizzer.iot.mqtt.server.broker.internal.InternalCommunication;
 import cn.wizzer.iot.mqtt.server.broker.internal.InternalMessage;
 import cn.wizzer.iot.mqtt.server.broker.internal.InternalSendServer;
 import cn.wizzer.iot.mqtt.server.broker.protocol.ProtocolProcess;
@@ -36,6 +38,7 @@ import org.nutz.mvc.annotation.*;
 import redis.clients.jedis.*;
 
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -70,6 +73,8 @@ public class WebApiController {
     private Map<String, ChannelId> channelIdMap;
     @Inject
     private SessionStoreService sessionStoreService;
+    @Inject
+    private InternalCommunication internalCommunication;
 
     /**
      * 向设备发送数据,发送格式见 test_send 方法实例代码
@@ -92,11 +97,20 @@ public class WebApiController {
             message.setDup(data.getDup());
             message.setMqttQoS(data.getQos());
             message.setMessageBytes(data.getPayload().getBytes());
+            if (StrUtil.equalsIgnoreCase("base64",data.getEncoding())){
+                String payload = data.getPayload();
+                Base64.Decoder decoder = Base64.getDecoder();
+                byte[] decodes = decoder.decode(payload);
+                message.setMessageBytes(decodes);
+            }
             log.debug("send:::" + Json.toJson(message));
             internalSendServer.sendPublishMessage(message.getClientId(), message.getTopic(), MqttQoS.valueOf(message.getMqttQoS()), message.getMessageBytes(), message.isRetain(), message.isDup());
             //如果开启集群功能
             if (brokerProperties.getClusterEnabled()) {
                 redisCluster.sendMessage(message);
+            }
+            if (brokerProperties.getKafkaBrokerEnabled()){
+                internalCommunication.internalSend(message);
             }
             return ResponseResult.genSuccessResult();
         } catch (Exception e) {

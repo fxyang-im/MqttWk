@@ -5,6 +5,7 @@
 package cn.wizzer.iot.mqtt.server.broker.internal;
 
 import java.io.Serializable;
+import java.util.Base64;
 
 /**
  * 内部消息

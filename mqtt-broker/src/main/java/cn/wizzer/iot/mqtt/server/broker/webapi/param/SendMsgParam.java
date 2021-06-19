@@ -14,6 +14,8 @@ public class SendMsgParam {
     private Integer qos;
     private Boolean retain;
     private Boolean dup;
+    //是否为 base64
+    private String encoding;
 
     public String getTopic() {
         return topic;
@@ -61,5 +63,13 @@ public class SendMsgParam {
 
     public void setDup(Boolean dup) {
         this.dup = dup;
+    }
+
+    public String getEncoding() {
+        return encoding;
+    }
+
+    public void setEncoding(String encoding) {
+        this.encoding = encoding;
     }
 }
