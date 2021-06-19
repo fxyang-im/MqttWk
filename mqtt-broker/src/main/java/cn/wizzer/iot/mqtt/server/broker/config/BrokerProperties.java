@@ -115,6 +115,13 @@ public class BrokerProperties {
     private boolean kafkaBrokerEnabled;
     public static final String PROP_KAFKA_BROKER_ENABLED = PRE + "kafka.broker-enabled";
 
+    /**
+     * MQTT.Subscribe消息必须通过用户名密码验证
+     */
+    private boolean mqttAuthorizationMust;
+    @PropDoc(group = "broker", value = "Subscribe和Publish发布和订阅必须通过授权验证, 默认true", type = "boolean", defaultValue = "true")
+    public static final String PROP_MQTT_AUTHORIZATION_MUST = PRE + "mqtt-authorization-must";
+
 
     public void init() {
         this.id = conf.get(_id, "mqttwk");
@@ -133,6 +140,7 @@ public class BrokerProperties {
         this.useEpoll = conf.getBoolean(PROP_USEEPOLL, false);
         this.soBacklog = conf.getInt(PROP_SOBACKLOG, 511);
         this.soKeepAlive = conf.getBoolean(PROP_SOKEEPALIVE, true);
+        this.mqttAuthorizationMust = conf.getBoolean(PROP_MQTT_AUTHORIZATION_MUST, true);
     }
 
     public String getId() {
@@ -279,4 +287,11 @@ public class BrokerProperties {
         return this;
     }
 
+    public boolean isMqttAuthorizationMust() {
+        return mqttAuthorizationMust;
+    }
+
+    public void setMqttAuthorizationMust(boolean mqttAuthorizationMust) {
+        this.mqttAuthorizationMust = mqttAuthorizationMust;
+    }
 }
