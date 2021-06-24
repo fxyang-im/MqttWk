@@ -56,42 +56,37 @@ public class InternalSendServer {
         List<SubscribeStore> subscribeStores = subscribeStoreService.search(topic);
         subscribeStores.forEach(subscribeStore -> {
             if (!clientId.equals(subscribeStore.getClientId()) && sessionStoreService.containsKey(subscribeStore.getClientId())) {
-                // 订阅者收到MQTT消息的QoS级别, 最终取决于发布消息的QoS和主题订阅的QoS
-                MqttQoS respQoS = mqttQoS.value() > subscribeStore.getMqttQoS() ? MqttQoS.valueOf(subscribeStore.getMqttQoS()) : mqttQoS;
-                if (respQoS == MqttQoS.AT_MOST_ONCE) {
-                    MqttPublishMessage publishMessage = (MqttPublishMessage) MqttMessageFactory.newMessage(
-                            new MqttFixedHeader(MqttMessageType.PUBLISH, dup, respQoS, retain, 0),
-                            new MqttPublishVariableHeader(topic, 0), Unpooled.buffer().writeBytes(messageBytes));
-                    LOGGER.debug("PUBLISH - clientId: {}, topic: {}, Qos: {}", subscribeStore.getClientId(), topic, respQoS.value());
-                    SessionStore sessionStore = sessionStoreService.get(subscribeStore.getClientId());
-                    ChannelId channelId = channelIdMap.get(sessionStore.getBrokerId() + "_" + sessionStore.getChannelId());
-                    if (channelId != null) {
+                SessionStore sessionStore = sessionStoreService.get(subscribeStore.getClientId());
+                ChannelId channelId = channelIdMap.get(sessionStore.getBrokerId() + "_" + sessionStore.getChannelId());
+                if (channelId != null) {
+                    // 订阅者收到MQTT消息的QoS级别, 最终取决于发布消息的QoS和主题订阅的QoS
+                    MqttQoS respQoS = mqttQoS.value() > subscribeStore.getMqttQoS() ? MqttQoS.valueOf(subscribeStore.getMqttQoS()) : mqttQoS;
+                    if (respQoS == MqttQoS.AT_MOST_ONCE) {
+                        MqttPublishMessage publishMessage = (MqttPublishMessage) MqttMessageFactory.newMessage(
+                                new MqttFixedHeader(MqttMessageType.PUBLISH, dup, respQoS, retain, 0),
+                                new MqttPublishVariableHeader(topic, 0), Unpooled.buffer().writeBytes(messageBytes));
+                        LOGGER.debug("PUBLISH - clientId: {}, topic: {}, Qos: {}", subscribeStore.getClientId(), topic, respQoS.value());
+
                         Channel channel = channelGroup.find(channelId);
                         if (channel != null) channel.writeAndFlush(publishMessage);
                     }
-                }
-                if (respQoS == MqttQoS.AT_LEAST_ONCE) {
-                    int messageId = messageIdService.getNextMessageId();
-                    MqttPublishMessage publishMessage = (MqttPublishMessage) MqttMessageFactory.newMessage(
-                            new MqttFixedHeader(MqttMessageType.PUBLISH, dup, respQoS, retain, 0),
-                            new MqttPublishVariableHeader(topic, messageId), Unpooled.buffer().writeBytes(messageBytes));
-                    LOGGER.debug("PUBLISH - clientId: {}, topic: {}, Qos: {}, messageId: {}", subscribeStore.getClientId(), topic, respQoS.value(), messageId);
-                    SessionStore sessionStore = sessionStoreService.get(subscribeStore.getClientId());
-                    ChannelId channelId = channelIdMap.get(sessionStore.getBrokerId() + "_" + sessionStore.getChannelId());
-                    if (channelId != null) {
+                    if (respQoS == MqttQoS.AT_LEAST_ONCE) {
+                        int messageId = messageIdService.getNextMessageId();
+                        MqttPublishMessage publishMessage = (MqttPublishMessage) MqttMessageFactory.newMessage(
+                                new MqttFixedHeader(MqttMessageType.PUBLISH, dup, respQoS, retain, 0),
+                                new MqttPublishVariableHeader(topic, messageId), Unpooled.buffer().writeBytes(messageBytes));
+                        LOGGER.debug("PUBLISH - clientId: {}, topic: {}, Qos: {}, messageId: {}", subscribeStore.getClientId(), topic, respQoS.value(), messageId);
+
                         Channel channel = channelGroup.find(channelId);
                         if (channel != null) channel.writeAndFlush(publishMessage);
                     }
-                }
-                if (respQoS == MqttQoS.EXACTLY_ONCE) {
-                    int messageId = messageIdService.getNextMessageId();
-                    MqttPublishMessage publishMessage = (MqttPublishMessage) MqttMessageFactory.newMessage(
-                            new MqttFixedHeader(MqttMessageType.PUBLISH, dup, respQoS, retain, 0),
-                            new MqttPublishVariableHeader(topic, messageId), Unpooled.buffer().writeBytes(messageBytes));
-                    LOGGER.debug("PUBLISH - clientId: {}, topic: {}, Qos: {}, messageId: {}", subscribeStore.getClientId(), topic, respQoS.value(), messageId);
-                    SessionStore sessionStore = sessionStoreService.get(subscribeStore.getClientId());
-                    ChannelId channelId = channelIdMap.get(sessionStore.getBrokerId() + "_" + sessionStore.getChannelId());
-                    if (channelId != null) {
+                    if (respQoS == MqttQoS.EXACTLY_ONCE) {
+                        int messageId = messageIdService.getNextMessageId();
+                        MqttPublishMessage publishMessage = (MqttPublishMessage) MqttMessageFactory.newMessage(
+                                new MqttFixedHeader(MqttMessageType.PUBLISH, dup, respQoS, retain, 0),
+                                new MqttPublishVariableHeader(topic, messageId), Unpooled.buffer().writeBytes(messageBytes));
+                        LOGGER.debug("PUBLISH - clientId: {}, topic: {}, Qos: {}, messageId: {}", subscribeStore.getClientId(), topic, respQoS.value(), messageId);
+
                         Channel channel = channelGroup.find(channelId);
                         if (channel != null) channel.writeAndFlush(publishMessage);
                     }
