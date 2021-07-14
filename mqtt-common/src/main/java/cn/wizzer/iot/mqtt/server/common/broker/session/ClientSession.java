@@ -90,7 +90,7 @@ public class ClientSession {
     public void messageDeliver(){
 
         // 1.检查飞行队列投递情况,超时重新投递
-
+        List<this.flight.needMessageDeliver(this.retryInflightInterval);
         // 2.检查消息队列投递情况
     }
 }
