@@ -1,4 +1,4 @@
-package cn.wizzer.iot.mqtt.server.common.broker.session;
+package cn.wizzer.iot.mqtt.server.broker.session;
 
 /**
  * @author yp

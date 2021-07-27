@@ -1,7 +1,8 @@
-package cn.wizzer.iot.mqtt.server.common.broker.session;
+package cn.wizzer.iot.mqtt.server.broker.session;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * @author yp
@@ -49,6 +50,8 @@ public class ClientSession {
      */
     private long createTime;
 
+    public volatile AtomicBoolean sessionStatus = new AtomicBoolean(true);
+
     private Integer maxMessageQueueNum = 100;
 
     private DropMessageHandler dropMessageHandler = new NullDropMessageHandler();
@@ -89,5 +92,9 @@ public class ClientSession {
 
     public void messageDeliver(){
         // 1.检查飞行队列投递情况,超时重新投递
+    }
+
+    public void inFlightMessageRedeliver() {
+        boolean flag = this.flight.inFlightMessageRedeliver();
     }
 }
